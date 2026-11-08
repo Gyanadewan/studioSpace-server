@@ -35,6 +35,25 @@ app.get("/featured-studios", async (req, res) => {
 });
 
 
+app.get("/categories", async (req, res) => {
+  try {
+    const categories = await db
+      .collection("studios")
+      .distinct("category");
+
+    res.send(categories);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch categories",
+    });
+  }
+});
+
+app.get("/studios",async(req,res) => {
+  const studios = await studiosCollection.find(req.query.category? {category: req.query.category}:{}).toArray()
+  res.send(studios)
+})
+
 
 
 app.get("/", (req, res) => {
