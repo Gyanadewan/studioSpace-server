@@ -1,7 +1,7 @@
 import express from "express";
 import "dotenv/config";
 import { MongoClient, ObjectId } from "mongodb";
-
+import cors from "cors"
 const client = new MongoClient(process.env.MONGODB_URL);
 
 export async function connectToMongoDB() {
@@ -20,10 +20,10 @@ const db = mongoClient.db("studio-space");
 const studiosCollection = db.collection("studios");
 
 const app = express();
-
+app.use(express.json())
 const port = 8000;
 
-
+app.use(cors())
 app.get("/featured-studios", async (req, res) => {
   const result = await studiosCollection
     .find({ isAvailable: true })
@@ -52,6 +52,13 @@ app.get("/categories", async (req, res) => {
 app.get("/studios",async(req,res) => {
   const studios = await studiosCollection.find(req.query.category? {category: req.query.category}:{}).toArray()
   res.send(studios)
+})
+
+app.post("/studios",async (req,res)=> {
+  const studioData = req.body;
+  console.log(studioData)
+  const result = await studiosCollection.insertOne(studioData)
+  res.send(result)
 })
 
 
