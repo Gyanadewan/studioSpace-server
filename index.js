@@ -55,6 +55,20 @@ app.get("/studios",async(req,res) => {
 })
 
 
+app.get("/studios/:id", async (req, res) => {
+  try {
+    const studio = await studiosCollection.findOne({
+      _id: new ObjectId(req.params.id),
+    });
+
+    res.send(studio);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch studio" });
+  }
+});
+
+
+
 
 app.get("/", (req, res) => {
   res.send("Hello World ..");
