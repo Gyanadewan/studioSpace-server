@@ -14,10 +14,11 @@ export async function connectToMongoDB() {
   }
 }
 
-
 const mongoClient = await connectToMongoDB();
 const db = mongoClient.db("studio-space");
 const studiosCollection = db.collection("studios");
+const bookingsCollection = db.collection("bookings");
+
 
 const app = express();
 app.use(express.json())
@@ -75,7 +76,33 @@ app.get("/studios/:id", async (req, res) => {
 });
 
 
+app.post("/bookings", async (req, res) => {
+  const result = await bookingsCollection.insertOne({
+    ...req.body,
+    status: "Pending",
+    createdAt: new Date(),
+  });
 
+  res.send(result);
+});
+
+
+app.get("/my-bookings/:email", async (req, res) => {
+  const bookings = await bookingsCollection
+    .find({ customerEmail: req.params.email })
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  res.send(bookings);
+});
+
+
+app.delete("/bookings/:id",async(req,res) => {
+  const result = await bookingsCollection.deleteOne({
+    _id: new ObjectId(req.params.id)
+  });
+  res.send(result)
+})
 
 app.get("/", (req, res) => {
   res.send("Hello World ..");
