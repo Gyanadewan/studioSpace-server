@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config";
 import { MongoClient, ObjectId } from "mongodb";
 import cors from "cors"
+import { createRemoteJWKSet, jwtVerify } from "jose";
 const client = new MongoClient(process.env.MONGODB_URL);
 
 export async function connectToMongoDB() {
@@ -20,6 +21,36 @@ const studiosCollection = db.collection("studios");
 const bookingsCollection = db.collection("bookings");
 
 
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ msg: "Unauthorized!" });
+  }
+  const token = authHeader.split(" ")[1];
+   console.log(token)
+  if (!token) {
+    return res.status(401).send({ msg: "Unauthorized!" });
+  }
+
+ const JWKS = createRemoteJWKSet(
+    new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+  );
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    req.user = payload;
+    console.log(payload)
+    next();
+  } catch (error) {
+     console.log("JWT ERROR:", error.code);
+    console.log("JWT MESSAGE:", error.message);
+    return res.status(500).send({ msg: "Server Error!" });
+  }
+};
+
+ 
+
 const app = express();
 app.use(express.json())
 const port = 8000;
@@ -33,7 +64,7 @@ app.get("/featured-studios", async (req, res) => {
     .toArray();
 
   res.send(result);
-});
+});  
 
 
 app.get("/categories", async (req, res) => {
@@ -55,7 +86,7 @@ app.get("/studios",async(req,res) => {
   res.send(studios)
 })
 
-app.post("/studios",async (req,res)=> {
+app.post("/studios",verifyToken,async (req,res)=> {
   const studioData = req.body;
   console.log(studioData)
   const result = await studiosCollection.insertOne(studioData)
@@ -76,7 +107,7 @@ app.get("/studios/:id", async (req, res) => {
 });
 
 
-app.post("/bookings", async (req, res) => {
+app.post("/bookings",verifyToken, async (req, res) => {
   const result = await bookingsCollection.insertOne({
     ...req.body,
     status: "Pending",
@@ -87,7 +118,7 @@ app.post("/bookings", async (req, res) => {
 });
 
 
-app.get("/my-bookings/:email", async (req, res) => {
+app.get("/my-bookings/:email",verifyToken, async (req, res) => {
   const bookings = await bookingsCollection
     .find({ customerEmail: req.params.email })
     .sort({ createdAt: -1 })
@@ -97,12 +128,14 @@ app.get("/my-bookings/:email", async (req, res) => {
 });
 
 
-app.delete("/bookings/:id",async(req,res) => {
+app.delete("/bookings/:id",verifyToken, async(req,res) => {
   const result = await bookingsCollection.deleteOne({
     _id: new ObjectId(req.params.id)
   });
   res.send(result)
 })
+
+
 
 app.get("/", (req, res) => {
   res.send("Hello World ..");
@@ -111,3 +144,5 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
+export default app
